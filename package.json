@@ -1,0 +1,17 @@
+{
+  "name": "Battleship",
+  "version": "0.0.1",
+  "description": "Coffeescript implementation of Battleship Game",
+  "repository": "http://github.com/jiangts/battleship",
+  "author": "Allan Jiang",
+  "dependencies": {
+    "grunt": "~0.4.0",
+    "grunt-contrib-coffee": "*",
+    "grunt-contrib-watch": "*"
+  },
+  "devDependencies": {
+    "grunt-contrib-concat": "^0.5.0",
+    "grunt-contrib-cssmin": "^0.10.0",
+    "grunt-contrib-uglify": "^0.5.0"
+  }
+}
