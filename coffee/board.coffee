@@ -27,23 +27,34 @@ class Board
       @board[@toCell(x, y)] = value
 
   shootCell: (x, y) ->
-    @setCell(x, y, @cellHasPiece(@toCell(x, y)))
+    cell = @toCell(x, y)
+    [hit, ship] = @cellHasPiece cell
+    @setCell(x, y, hit)
+    if ship then ship.cells[cell] = hit
+    
 
   # input: a cell string
   # returns true if a piece is already on the cell, false otherwise
   cellHasPiece: (cell) ->
     for piece in @pieces
       if piece.containsCell cell
-        return true
+        return [true, piece]
     return false
 
   # input: a piece object
   # returns false if unable to place piece, returns true if piece placed
   addPiece: (piece) ->
     for cell of piece.cells
-      if !(@containsCell cell) or @cellHasPiece cell
+      if !(@containsCell cell) or @cellHasPiece(cell)[0]
+        piece.remove()
         return false
     @pieces.push(piece)
+    return true
+
+  checkLoss: ->
+    for ship in @pieces
+      window.dbg = ship
+      if !ship.isDead() then return false
     return true
 
 window.Board = Board

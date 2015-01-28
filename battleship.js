@@ -36,7 +36,13 @@ Handling piece colllisions?
     };
 
     Board.prototype.shootCell = function(x, y) {
-      return this.setCell(x, y, this.cellHasPiece(this.toCell(x, y)));
+      var cell, hit, ship, _ref;
+      cell = this.toCell(x, y);
+      _ref = this.cellHasPiece(cell), hit = _ref[0], ship = _ref[1];
+      this.setCell(x, y, hit);
+      if (ship) {
+        return ship.cells[cell] = hit;
+      }
     };
 
     Board.prototype.cellHasPiece = function(cell) {
@@ -45,7 +51,7 @@ Handling piece colllisions?
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         piece = _ref[_i];
         if (piece.containsCell(cell)) {
-          return true;
+          return [true, piece];
         }
       }
       return false;
@@ -54,11 +60,25 @@ Handling piece colllisions?
     Board.prototype.addPiece = function(piece) {
       var cell;
       for (cell in piece.cells) {
-        if (!(this.containsCell(cell)) || this.cellHasPiece(cell)) {
+        if (!(this.containsCell(cell)) || this.cellHasPiece(cell)[0]) {
+          piece.remove();
           return false;
         }
       }
       this.pieces.push(piece);
+      return true;
+    };
+
+    Board.prototype.checkLoss = function() {
+      var ship, _i, _len, _ref;
+      _ref = this.pieces;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        ship = _ref[_i];
+        window.dbg = ship;
+        if (!ship.isDead()) {
+          return false;
+        }
+      }
       return true;
     };
 
@@ -88,11 +108,11 @@ Piece will know where it lives.
     }
 
     Piece.prototype.isDead = function() {
-      var alive, cell, _i, _len, _ref;
+      var cell, dead, _ref;
       _ref = this.cells;
-      for (alive = _i = 0, _len = _ref.length; _i < _len; alive = ++_i) {
-        cell = _ref[alive];
-        if (alive) {
+      for (cell in _ref) {
+        dead = _ref[cell];
+        if (!dead) {
           return false;
         }
       }
@@ -165,23 +185,62 @@ Piece will know where it lives.
 
 }).call(this);
 
+(function() {
+  var Brain, getRandomInt;
+
+  Brain = (function() {
+    function Brain(x, y, owner) {
+      this.x = x;
+      this.y = y;
+      this.owner = owner;
+      this.history = {};
+    }
+
+    Brain.prototype.attack = function() {
+      var cell, x, y;
+      x = getRandomInt(1, this.x);
+      y = getRandomInt(1, this.y);
+      cell = "" + x + "," + y;
+      if (cell in this.history) {
+        this.attack();
+      } else {
+        this.history[cell] = this.owner.attackCoord(x, y);
+      }
+      return cell;
+    };
+
+    return Brain;
+
+  })();
+
+  window.Brain = Brain;
+
+  getRandomInt = function(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+
+}).call(this);
+
 
 /*
 Player has ships and board. Player has opponent.
  */
 
 (function() {
-  var Player, getRandomBool, getRandomInt;
+  var Computer, Human, Player, getRandomBool, getRandomInt,
+    __hasProp = {}.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
   Player = (function() {
-    function Player(pieceArr, x, y) {
+    function Player(pieceArr, x, y, name) {
       this.pieceArr = pieceArr;
       this.x = x;
       this.y = y;
+      this.name = name != null ? name : "Computer";
       this.board = new Board(this.x, this.y);
     }
 
-    Player.prototype.setOpponent = function(opponent) {
+    Player.prototype.opponent = function(opponent) {
       this.opponent = opponent;
     };
 
@@ -191,7 +250,8 @@ Player has ships and board. Player has opponent.
       piece.place(x, y);
       if (this.board.addPiece(piece)) {
         console.log("Just placed a " + this.pieceArr.slice(-1) + " at (" + x + ", " + y + ")!");
-        return this.pieceArr.pop();
+        this.pieceArr.pop();
+        return piece;
       } else {
         return false;
       }
@@ -201,16 +261,6 @@ Player has ships and board. Player has opponent.
       if (this.opponent) {
         return this.opponent.board.shootCell(x, y);
       }
-    };
-
-    Player.prototype.cpuSetup = function() {
-      var safety, _results;
-      safety = 0;
-      _results = [];
-      while (this.pieceArr.length > 0 && safety++ < 100) {
-        _results.push(this.placePiece(getRandomBool(), getRandomInt(1, this.x), getRandomInt(1, this.y)));
-      }
-      return _results;
     };
 
     return Player;
@@ -225,7 +275,51 @@ Player has ships and board. Player has opponent.
     return Math.random() > 0.5;
   };
 
+  Computer = (function(_super) {
+    __extends(Computer, _super);
+
+    function Computer() {
+      return Computer.__super__.constructor.apply(this, arguments);
+    }
+
+    Computer.prototype.cpuSetup = function() {
+      var safety, _results;
+      safety = 0;
+      _results = [];
+      while (this.pieceArr.length > 0 && safety++ < 100) {
+        _results.push(this.placePiece(getRandomBool(), getRandomInt(1, this.x), getRandomInt(1, this.y)));
+      }
+      return _results;
+    };
+
+    Computer.prototype.setBrain = function(brain) {
+      this.brain = brain;
+    };
+
+    return Computer;
+
+  })(Player);
+
+  Human = (function(_super) {
+    __extends(Human, _super);
+
+    function Human() {
+      return Human.__super__.constructor.apply(this, arguments);
+    }
+
+    Human.prototype.getName = function(name) {
+      this.name = name;
+    };
+
+    return Human;
+
+  })(Player);
+
   window.Player = Player;
+
+  window.Computer = Computer;
+
+  window.Human = Human;
 
 }).call(this);
 
@@ -236,7 +330,8 @@ Need to create the game boards with listeners, allow setup
  */
 
 (function() {
-  var Game;
+  var Game,
+    __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
   Game = (function() {
     function Game(div, config) {
@@ -246,21 +341,54 @@ Need to create the game boards with listeners, allow setup
         y: 10,
         ships: ["Aircraft Carrier", "Battleship", "Submarine", "Cruiser", "Destroyer"]
       };
+      this.handleSetupCellClick = __bind(this.handleSetupCellClick, this);
+      this.handleAttackCellClick = __bind(this.handleAttackCellClick, this);
       this.turn = 0;
-      this.p1 = new Player(this.config.ships, this.config.x, this.config.y);
-      this.p2 = new Player(this.config.ships, this.config.x, this.config.y);
+      this.p1 = new Human(this.config.ships.slice(), this.config.x, this.config.y);
+      this.p2 = new Computer(this.config.ships.slice(), this.config.x, this.config.y);
     }
 
     Game.prototype.setup = function() {
+      this.createUI("attack-board", this.p2.board, this.handleAttackCellClick);
       this.p2.cpuSetup();
-      return this.createBoardUI("attack-board", this.p2.board);
+      this.p2.opponent(this.p1);
+      this.p2.setBrain(new Brain(this.config.x, this.config.y, this.p2));
+      return $((function(_this) {
+        return function() {
+          _this.createUI("own-board", _this.p1.board, _this.handleSetupCellClick);
+          return _this.setMessage("Please click on the board to the right to set up your pieces");
+        };
+      })(this));
+    };
+
+    Game.prototype.play = function() {
+      var move;
+      this.turn = this.turn + 1;
+      console.log(this.turn, this.myTurn());
+      move = (function(_this) {
+        return function() {
+          var coord;
+          if (_this.myTurn()) {
+            return _this.setMessage("Your move");
+          } else {
+            _this.setMessage("Computer to move");
+            coord = _this.p2.brain.attack();
+            _this.markCell("own-board", coord);
+            if (_this.p1.board.checkLoss() === true) {
+              alert("Computer wins!");
+            }
+            return _this.play();
+          }
+        };
+      })(this);
+      return setTimeout(move, 1000);
     };
 
     Game.prototype.myTurn = function() {
-      return this.turn & 2 === 0;
+      return this.turn % 2 === 1;
     };
 
-    Game.prototype.createBoardUI = function(cls, board) {
+    Game.prototype.createUI = function(cls, board, cb) {
       return $((function(_this) {
         return function() {
           var cell, i, j, row, table, _i, _j, _ref, _ref1;
@@ -268,19 +396,10 @@ Need to create the game boards with listeners, allow setup
           for (i = _i = 1, _ref = _this.config.x; 1 <= _ref ? _i <= _ref : _i >= _ref; i = 1 <= _ref ? ++_i : --_i) {
             row = $("<tr class='" + i + "'></tr>");
             for (j = _j = 1, _ref1 = _this.config.y; 1 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 1 <= _ref1 ? ++_j : --_j) {
-              cell = $("<td class='" + i + "," + j + "'></td>");
+              cell = $("<td class='" + j + "-" + i + "'></td>");
               row.append(cell);
               cell.click(function() {
-                var coords, me, x, y, _ref2;
-                me = $(this);
-                coords = me.attr("class");
-                _ref2 = coords.split(","), x = _ref2[0], y = _ref2[1];
-                if (board.shootCell(x, y)) {
-                  me.css("background-color", "red");
-                  return alert("HIT!");
-                } else {
-                  return me.css("background-color", "yellow");
-                }
+                return cb($(this), board);
               });
             }
             table.append(row);
@@ -288,6 +407,85 @@ Need to create the game boards with listeners, allow setup
           return $(_this.div).append(table);
         };
       })(this));
+    };
+
+    Game.prototype.setMessage = function(msg) {
+      if (!this.message) {
+        this.message = $("<center></center>");
+        this.message.insertAfter($(this.div));
+      }
+      return this.message.text(msg);
+    };
+
+    Game.prototype.handleAttackCellClick = function(me, board) {
+      var coords, x, y, _ref;
+      if (this.turn > 0 && this.myTurn()) {
+        coords = me.attr("class");
+        _ref = coords.split("-"), x = _ref[0], y = _ref[1];
+        if (board.shootCell(x, y)) {
+          if (me.css("background-color") !== "rgb(255, 0, 0)") {
+            this.setMessage("Hit!");
+          }
+          me.css("background-color", "red");
+          if (board.checkLoss() === true) {
+            alert("Congratulations, you win!");
+          }
+        } else {
+          this.setMessage("Miss");
+          me.css("background-color", "yellow");
+        }
+        return this.play();
+      } else {
+        return this.setMessage("Place your ships first so we can start the game!");
+      }
+    };
+
+    Game.prototype.handleSetupCellClick = function(me, board) {
+      var coords, horizontal, ship, x, y, _ref;
+      if (this.turn === 0) {
+        coords = me.attr("class");
+        _ref = coords.split("-"), x = _ref[0], y = _ref[1];
+        horizontal = prompt("Enter \"H\" for horizontal placement and \"V\" for vertical placement", "");
+        if (horizontal !== "H" && horizontal !== "V") {
+          return this.setMessage("Did not understand your format");
+        }
+        if (horizontal === "H") {
+          horizontal = true;
+        }
+        if (horizontal === "V") {
+          horizontal = false;
+        }
+        ship = this.p1.placePiece(horizontal, x, y);
+        if (ship !== false) {
+          this.setMessage("Successfully placed " + this.p1.pieceArr.slice(-1));
+          this.colorShip(ship, me);
+          if (this.p1.pieceArr.length === 0) {
+            return this.play();
+          }
+        } else {
+          return this.setMessage("Your ship can't go there!");
+        }
+      }
+    };
+
+    Game.prototype.markCell = function(tableCls, coord) {
+      var cell, selector, table;
+      table = $("." + tableCls);
+      selector = coord.replace(",", "-");
+      cell = table.find("." + selector);
+      return cell.html('<p style="text-align: center;">X</p>');
+    };
+
+    Game.prototype.colorShip = function(ship, me) {
+      var cell, coord, selector, table, _results;
+      table = me.parents('table');
+      _results = [];
+      for (coord in ship.cells) {
+        selector = coord.replace(",", "-");
+        cell = table.find("." + selector);
+        _results.push(cell.css('background-color', 'gray'));
+      }
+      return _results;
     };
 
     return Game;

@@ -7,8 +7,8 @@ class Piece
     @cells = {}
 
   isDead: ->
-    for cell, alive in @cells
-      if alive then return false
+    for cell, dead of @cells
+      if !dead then return false
     return true
 
   flip: ->
