@@ -2,8 +2,8 @@
 Player has ships and board. Player has opponent.
 ###
 class Player
-  constructor: (@pieceArr) ->
-    @board = new Board 10, 10
+  constructor: (@pieceArr, @x, @y) ->
+    @board = new Board @x, @y
 
   setOpponent: (@opponent) ->
 
@@ -18,7 +18,19 @@ class Player
 
   attackCoord: (x, y) ->
     if @opponent
-      @opponent.board.getCell
+      @opponent.board.shootCell(x, y)
 
-window.player1 = new Player ["Aircraft Carrier", "Battleship", "Submarine", "Cruiser", "Destroyer"]
+  cpuSetup: ->
+    # includes safety counter. will only try to place ships 100 times.
+    safety = 0
+    while(@pieceArr.length > 0 and safety++ < 100)
+      @placePiece getRandomBool(), getRandomInt(1, @x), getRandomInt(1, @y)
+    
 
+getRandomInt = (min, max) ->
+  return Math.floor(Math.random() * (max - min + 1)) + min
+
+getRandomBool = () ->
+  return Math.random() > 0.5
+
+window.Player = Player

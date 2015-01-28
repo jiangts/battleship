@@ -16,23 +16,18 @@ class Board
     [x, y] = cell.split(",")
     return @contains(x, y)
 
-  # input: x and y value of cell
-  # returns whether or not a cell has been set there
-  cellRegistered: (x, y) ->
-    return "#{x},#{y}" of @board
-
-  # input: cell x and y values, and a cell value
-  getCell: (x, y) ->
-    if @cellRegistered and @contains(x, y)
-      return @board "#{x},#{y}"
+  toCell: (x, y) ->
+    return "#{x},#{y}"
 
   # input: cell x and y values, and a cell value
   # returns true if cell set, false if unable to set
+  # value: true for hit, false for miss
   setCell: (x, y, value) ->
     if @contains(x, y)
-      @board["#{x},#{y}"] = value
-      return true
-    return false
+      @board[@toCell(x, y)] = value
+
+  shootCell: (x, y) ->
+    @setCell(x, y, @cellHasPiece(@toCell(x, y)))
 
   # input: a cell string
   # returns true if a piece is already on the cell, false otherwise
@@ -46,7 +41,6 @@ class Board
   # returns false if unable to place piece, returns true if piece placed
   addPiece: (piece) ->
     for cell of piece.cells
-      console.log(cell)
       if !(@containsCell cell) or @cellHasPiece cell
         return false
     @pieces.push(piece)

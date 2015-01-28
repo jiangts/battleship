@@ -14,8 +14,11 @@ class Piece
   flip: ->
     @horizontal = !@horizontal
 
+  toCell: (x, y) ->
+    return "#{x},#{y}"
+
   contains: (x, y) ->
-    return "#{x},#{y}" of @cells
+    return @toCell(x, y) of @cells
 
   containsCell: (cell) ->
     [x, y] = cell.split(",")
@@ -23,7 +26,7 @@ class Piece
 
   place: (x, y) ->
     for i in [1..@length]
-      @cells["#{x},#{y}"] = false
+      @cells[@toCell(x, y)] = false
       if @horizontal then x++ else y++
 
   remove: ->

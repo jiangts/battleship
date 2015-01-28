@@ -25,22 +25,18 @@ Handling piece colllisions?
       return this.contains(x, y);
     };
 
-    Board.prototype.cellRegistered = function(x, y) {
-      return ("" + x + "," + y) in this.board;
-    };
-
-    Board.prototype.getCell = function(x, y) {
-      if (this.cellRegistered && this.contains(x, y)) {
-        return this.board("" + x + "," + y);
-      }
+    Board.prototype.toCell = function(x, y) {
+      return "" + x + "," + y;
     };
 
     Board.prototype.setCell = function(x, y, value) {
       if (this.contains(x, y)) {
-        this.board["" + x + "," + y] = value;
-        return true;
+        return this.board[this.toCell(x, y)] = value;
       }
-      return false;
+    };
+
+    Board.prototype.shootCell = function(x, y) {
+      return this.setCell(x, y, this.cellHasPiece(this.toCell(x, y)));
     };
 
     Board.prototype.cellHasPiece = function(cell) {
@@ -58,7 +54,6 @@ Handling piece colllisions?
     Board.prototype.addPiece = function(piece) {
       var cell;
       for (cell in piece.cells) {
-        console.log(cell);
         if (!(this.containsCell(cell)) || this.cellHasPiece(cell)) {
           return false;
         }
@@ -108,8 +103,12 @@ Piece will know where it lives.
       return this.horizontal = !this.horizontal;
     };
 
+    Piece.prototype.toCell = function(x, y) {
+      return "" + x + "," + y;
+    };
+
     Piece.prototype.contains = function(x, y) {
-      return ("" + x + "," + y) in this.cells;
+      return this.toCell(x, y) in this.cells;
     };
 
     Piece.prototype.containsCell = function(cell) {
@@ -122,7 +121,7 @@ Piece will know where it lives.
       var i, _i, _ref, _results;
       _results = [];
       for (i = _i = 1, _ref = this.length; 1 <= _ref ? _i <= _ref : _i >= _ref; i = 1 <= _ref ? ++_i : --_i) {
-        this.cells["" + x + "," + y] = false;
+        this.cells[this.toCell(x, y)] = false;
         if (this.horizontal) {
           _results.push(x++);
         } else {
@@ -172,12 +171,14 @@ Player has ships and board. Player has opponent.
  */
 
 (function() {
-  var Player;
+  var Player, getRandomBool, getRandomInt;
 
   Player = (function() {
-    function Player(pieceArr) {
+    function Player(pieceArr, x, y) {
       this.pieceArr = pieceArr;
-      this.board = new Board(10, 10);
+      this.x = x;
+      this.y = y;
+      this.board = new Board(this.x, this.y);
     }
 
     Player.prototype.setOpponent = function(opponent) {
@@ -198,14 +199,105 @@ Player has ships and board. Player has opponent.
 
     Player.prototype.attackCoord = function(x, y) {
       if (this.opponent) {
-        return this.opponent.board.getCell;
+        return this.opponent.board.shootCell(x, y);
       }
+    };
+
+    Player.prototype.cpuSetup = function() {
+      var safety, _results;
+      safety = 0;
+      _results = [];
+      while (this.pieceArr.length > 0 && safety++ < 100) {
+        _results.push(this.placePiece(getRandomBool(), getRandomInt(1, this.x), getRandomInt(1, this.y)));
+      }
+      return _results;
     };
 
     return Player;
 
   })();
 
-  window.player1 = new Player(["Aircraft Carrier", "Battleship", "Submarine", "Cruiser", "Destroyer"]);
+  getRandomInt = function(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+
+  getRandomBool = function() {
+    return Math.random() > 0.5;
+  };
+
+  window.Player = Player;
+
+}).call(this);
+
+
+/*
+TODO make a settings config object work
+Need to create the game boards with listeners, allow setup
+ */
+
+(function() {
+  var Game;
+
+  Game = (function() {
+    function Game(div, config) {
+      this.div = div;
+      this.config = config != null ? config : {
+        x: 10,
+        y: 10,
+        ships: ["Aircraft Carrier", "Battleship", "Submarine", "Cruiser", "Destroyer"]
+      };
+      this.turn = 0;
+      this.p1 = new Player(this.config.ships, this.config.x, this.config.y);
+      this.p2 = new Player(this.config.ships, this.config.x, this.config.y);
+    }
+
+    Game.prototype.setup = function() {
+      this.p2.cpuSetup();
+      return this.createBoardUI("attack-board", this.p2.board);
+    };
+
+    Game.prototype.myTurn = function() {
+      return this.turn & 2 === 0;
+    };
+
+    Game.prototype.createBoardUI = function(cls, board) {
+      return $((function(_this) {
+        return function() {
+          var cell, i, j, row, table, _i, _j, _ref, _ref1;
+          table = $("<table class='" + cls + "'>");
+          for (i = _i = 1, _ref = _this.config.x; 1 <= _ref ? _i <= _ref : _i >= _ref; i = 1 <= _ref ? ++_i : --_i) {
+            row = $("<tr class='" + i + "'></tr>");
+            for (j = _j = 1, _ref1 = _this.config.y; 1 <= _ref1 ? _j <= _ref1 : _j >= _ref1; j = 1 <= _ref1 ? ++_j : --_j) {
+              cell = $("<td class='" + i + "," + j + "'></td>");
+              row.append(cell);
+              cell.click(function() {
+                var coords, me, x, y, _ref2;
+                me = $(this);
+                coords = me.attr("class");
+                _ref2 = coords.split(","), x = _ref2[0], y = _ref2[1];
+                if (board.shootCell(x, y)) {
+                  me.css("background-color", "red");
+                  return alert("HIT!");
+                } else {
+                  return me.css("background-color", "yellow");
+                }
+              });
+            }
+            table.append(row);
+          }
+          return $(_this.div).append(table);
+        };
+      })(this));
+    };
+
+    return Game;
+
+  })();
+
+  window.Game = Game;
+
+  window.game = new Game('#battleship-game');
+
+  game.setup();
 
 }).call(this);

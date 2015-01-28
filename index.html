@@ -2,12 +2,25 @@
   <head>
     <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
     <script src="battleship.js"></script>
+    <style>
+      table {
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      table, th, td, tr {
+        border: 1px solid black;
+        width: 3em;
+        height: 3em;
+      }
+    </style>
   </head>
   <body>
     <center>
       <h1>Welcome to Battleship!</h1>
     </center>
     <hr/>
+    <div id="battleship-game">
+    </div>
   </body>
 
 </html>
