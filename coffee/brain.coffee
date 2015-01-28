@@ -5,6 +5,7 @@ class Brain
     x = getRandomInt(1, @x)
     y = getRandomInt(1, @y)
     cell = "#{x},#{y}"
+    # if you've already attacked that square, try again
     if cell of @history
       @attack()
     else

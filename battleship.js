@@ -249,7 +249,6 @@ Player has ships and board. Player has opponent.
       piece = new Ship(this.pieceArr.slice(-1), horizontal);
       piece.place(x, y);
       if (this.board.addPiece(piece)) {
-        console.log("Just placed a " + this.pieceArr.slice(-1) + " at (" + x + ", " + y + ")!");
         this.pieceArr.pop();
         return piece;
       } else {
@@ -261,6 +260,16 @@ Player has ships and board. Player has opponent.
       if (this.opponent) {
         return this.opponent.board.shootCell(x, y);
       }
+    };
+
+    Player.prototype.randomPieceSetup = function() {
+      var safety, _results;
+      safety = 0;
+      _results = [];
+      while (this.pieceArr.length > 0 && safety++ < 100) {
+        _results.push(this.placePiece(getRandomBool(), getRandomInt(1, this.x), getRandomInt(1, this.y)));
+      }
+      return _results;
     };
 
     return Player;
@@ -281,16 +290,6 @@ Player has ships and board. Player has opponent.
     function Computer() {
       return Computer.__super__.constructor.apply(this, arguments);
     }
-
-    Computer.prototype.cpuSetup = function() {
-      var safety, _results;
-      safety = 0;
-      _results = [];
-      while (this.pieceArr.length > 0 && safety++ < 100) {
-        _results.push(this.placePiece(getRandomBool(), getRandomInt(1, this.x), getRandomInt(1, this.y)));
-      }
-      return _results;
-    };
 
     Computer.prototype.setBrain = function(brain) {
       this.brain = brain;
@@ -323,12 +322,6 @@ Player has ships and board. Player has opponent.
 
 }).call(this);
 
-
-/*
-TODO make a settings config object work
-Need to create the game boards with listeners, allow setup
- */
-
 (function() {
   var Game,
     __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
@@ -350,7 +343,7 @@ Need to create the game boards with listeners, allow setup
 
     Game.prototype.setup = function() {
       this.createUI("attack-board", this.p2.board, this.handleAttackCellClick);
-      this.p2.cpuSetup();
+      this.p2.randomPieceSetup();
       this.p2.opponent(this.p1);
       this.p2.setBrain(new Brain(this.config.x, this.config.y, this.p2));
       return $((function(_this) {
@@ -363,11 +356,10 @@ Need to create the game boards with listeners, allow setup
 
     Game.prototype.play = function() {
       var move;
-      this.turn = this.turn + 1;
-      console.log(this.turn, this.myTurn());
       move = (function(_this) {
         return function() {
           var coord;
+          _this.turn++;
           if (_this.myTurn()) {
             return _this.setMessage("Your move");
           } else {
@@ -419,7 +411,10 @@ Need to create the game boards with listeners, allow setup
 
     Game.prototype.handleAttackCellClick = function(me, board) {
       var coords, x, y, _ref;
-      if (this.turn > 0 && this.myTurn()) {
+      if (this.turn === 0) {
+        return this.setMessage("Place your ships first so we can start the game!");
+      }
+      if (this.myTurn()) {
         coords = me.attr("class");
         _ref = coords.split("-"), x = _ref[0], y = _ref[1];
         if (board.shootCell(x, y)) {
@@ -436,24 +431,33 @@ Need to create the game boards with listeners, allow setup
         }
         return this.play();
       } else {
-        return this.setMessage("Place your ships first so we can start the game!");
+        return this.setMessage("It's not your turn!");
       }
     };
 
     Game.prototype.handleSetupCellClick = function(me, board) {
-      var coords, horizontal, ship, x, y, _ref;
+      var coords, horizontal, ship, x, y, _i, _len, _ref, _ref1;
       if (this.turn === 0) {
         coords = me.attr("class");
         _ref = coords.split("-"), x = _ref[0], y = _ref[1];
-        horizontal = prompt("Enter \"H\" for horizontal placement and \"V\" for vertical placement", "");
-        if (horizontal !== "H" && horizontal !== "V") {
-          return this.setMessage("Did not understand your format");
-        }
-        if (horizontal === "H") {
-          horizontal = true;
-        }
-        if (horizontal === "V") {
-          horizontal = false;
+        horizontal = prompt("Enter \"H\" for horizontal placement and \"V\" for vertical placement. If you're lazy, hit \"R\" for random placement", "");
+        switch (horizontal) {
+          case "H":
+            horizontal = true;
+            break;
+          case "V":
+            horizontal = false;
+            break;
+          case "R":
+            this.p1.randomPieceSetup();
+            _ref1 = this.p1.board.pieces;
+            for (_i = 0, _len = _ref1.length; _i < _len; _i++) {
+              ship = _ref1[_i];
+              this.colorShip(ship, me);
+            }
+            return this.play();
+          default:
+            return this.setMessage("Did not understand your format");
         }
         ship = this.p1.placePiece(horizontal, x, y);
         if (ship !== false) {

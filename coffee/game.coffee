@@ -1,7 +1,3 @@
-###
-TODO make a settings config object work
-Need to create the game boards with listeners, allow setup
-###
 class Game
   constructor: (@div, @config = x: 10, y: 10, ships: ["Aircraft Carrier", "Battleship", "Submarine", "Cruiser", "Destroyer"]) ->
     @turn = 0
@@ -10,7 +6,7 @@ class Game
 
   setup: ->
     @createUI("attack-board", @p2.board, @handleAttackCellClick)
-    @p2.cpuSetup()  # cpu setup is simply placing pieces on the board
+    @p2.randomPieceSetup()  # cpu setup is placing pieces randomly on board
     @p2.opponent(@p1)
     @p2.setBrain(new Brain @config.x, @config.y, @p2)
     $ =>
@@ -19,9 +15,8 @@ class Game
       # Human Setup
 
   play: ->
-    @turn = @turn + 1
-    console.log @turn, @myTurn()
     move = =>
+      @turn++
       if @myTurn()
         @setMessage "Your move"
       else
@@ -54,11 +49,12 @@ class Game
     if !@message
       @message = $("<center></center>")
       @message.insertAfter $(@div)
-      #$(@div).append ["<br>", "<br>", @message]
     @message.text msg
 
   handleAttackCellClick: (me, board) =>
-    if @turn > 0 and @myTurn()
+    if @turn is 0
+      return @setMessage "Place your ships first so we can start the game!"
+    if @myTurn()
       coords = me.attr("class")
       [x, y] = coords.split("-")
       if board.shootCell(x, y)
@@ -72,16 +68,23 @@ class Game
         me.css("background-color", "yellow")
       @play()
     else
-      @setMessage "Place your ships first so we can start the game!"
+      @setMessage "It's not your turn!"
 
   handleSetupCellClick: (me, board) =>
     if @turn is 0
       coords = me.attr("class")
       [x, y] = coords.split("-")
-      horizontal = prompt("Enter \"H\" for horizontal placement and \"V\" for vertical placement", "")
-      if horizontal isnt "H" and horizontal isnt "V" then return @setMessage "Did not understand your format"
-      if horizontal is "H" then horizontal = true
-      if horizontal is "V" then horizontal = false
+      horizontal = prompt("Enter \"H\" for horizontal placement and \"V\" for vertical placement. If you're lazy, hit \"R\" for random placement", "")
+      switch horizontal
+        when "H" then horizontal = true
+        when "V" then horizontal = false
+        when "R"
+          @p1.randomPieceSetup()
+          for ship in @p1.board.pieces
+            @colorShip ship, me
+          return @play()
+        else return @setMessage "Did not understand your format"
+
       ship = @p1.placePiece horizontal, x, y
       if ship isnt false
         @setMessage "Successfully placed #{@p1.pieceArr[-1..]}"
